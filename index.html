@@ -30,4 +30,578 @@
     <link rel="alternate" hreflang="ar" href="https://palabrasyfrasesperdidas-dotcom.github.io/palabras-ar/">
     <link rel="alternate" hreflang="x-default" href="https://palabrasyfrasesperdidas-dotcom.github.io/palabrasyfrasesperdidas/">
 
-    <link href="
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background-color: #0d0d0d;
+            color: #ffffff;
+            font-family: 'Montserrat', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            width: 100%;
+            max-width: 900px;
+        }
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 5px;
+            color: #e0e0e0;
+        }
+        p.subtitle {
+            font-size: 1rem;
+            color: #888888;
+        }
+        .viewer-section {
+            display: flex;
+            width: 100%;
+            max-width: 900px;
+            flex-direction: column;
+            align-items: center;
+        }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 15px;
+            width: 100%;
+        }
+        select, button {
+            background-color: #1a1a1a;
+            color: #ffffff;
+            border: 1px solid #333333;
+            padding: 10px 16px;
+            font-size: 0.95rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s, border-color 0.2s;
+            touch-action: manipulation;
+        }
+        select:hover, button:hover:not(:disabled) {
+            background-color: #2a2a2a;
+            border-color: #555555;
+        }
+        button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            max-width: 480px;
+            background-color: #000000;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0 auto;
+        }
+        canvas {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .info-panel {
+            margin-top: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            max-width: 480px;
+            font-size: 0.9rem;
+            color: #aaaaaa;
+        }
+        #loading {
+            position: absolute;
+            color: #ffffff;
+            font-size: 1.1rem;
+            background: rgba(0,0,0,0.7);
+            padding: 10px 20px;
+            border-radius: 8px;
+            display: none;
+            z-index: 10;
+        }
+
+        /* Top interaction button panel styles */
+        .interaccion-container {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .btn-accion {
+            background: #1a1a1a;
+            border: 1px solid #444;
+            color: #bbb;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.25s ease;
+        }
+
+        .btn-accion svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+            flex-shrink: 0;
+        }
+
+        .btn-accion:hover {
+            border-color: #d4af37;
+            color: #fff;
+            background: #2a2a2a;
+        }
+
+        .btn-accion.activo-huella {
+            border-color: #e67e22;
+            color: #e67e22;
+            background: rgba(230, 126, 34, 0.05);
+        }
+
+        .btn-accion.activo-rumbo {
+            border-color: #3498db;
+            color: #3498db;
+            background: rgba(52, 152, 219, 0.05);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Palavras e frases perdidas</h1>
+        <p class="subtitle">Coleção de pegadas e reflexões</p>
+    </header>
+
+    <div class="viewer-section">
+        <div class="controls">
+            <button id="homeBtn">🏠 Home</button>
+            <select id="blockSelect"></select>
+            <button id="prevBtn">&larr; Anterior</button>
+            <button id="nextBtn">Seguinte &rarr;</button>
+            <button id="randomBtn">🎲 Aleatória</button>
+        </div>
+
+        <div id="botonesAccionContainer"></div>
+
+        <div class="canvas-container">
+            <div id="loading">A carregar...</div>
+            <canvas id="cardCanvas"></canvas>
+        </div>
+
+        <div class="info-panel">
+            <span id="huellaCounter">--</span>
+        </div>
+    </div>
+
+<script>
+    const BIN_ID = "6a92fe69f5f4af5e2951f6fb";
+    const API_KEY = "$2a$10$cjWB6UsaBPWauztsla0YPOSy9cQHEcoA7iVzbdmOXpDrwNk6gf87C";
+
+    // Estritamente 14 bloques en portugués
+    const blockNamesPT = [
+        "Bloco 1: Geometria do destino",
+        "Bloco 2: Arquitetura da alma",
+        "Bloco 3: Anatomia do silêncio",
+        "Bloco 4: O medo e as suas sombras",
+        "Bloco 5: O olhar do mundo",
+        "Bloco 6: O ruído dos néscios",
+        "Bloco 7: O céu das estrelas",
+        "Bloco 8: A ética do coração",
+        "Bloco 9: O tempo que respira",
+        "Bloco 10: O jogo de viver",
+        "Bloco 11: O batimento da liberdade",
+        "Bloco 12: A anatomia do pensamento",
+        "Bloco 13: O universo das palavras",
+        "Bloco 14: A solidão que fala"
+    ];
+
+    let allFrases = [];
+    let currentFilteredFrases = [];
+    let currentIndex = parseInt(sessionStorage.getItem('pyfp_pt_index') || '0', 10);
+    let animationFrameId = null;
+    let currentVideoElem = null;
+
+    let canvas, ctx, blockSelect, prevBtn, nextBtn, randomBtn, homeBtn, huellaCounter, loadingElem, botonesAccionContainer;
+
+    function populateSelect() {
+        if (!blockSelect) return;
+        const currentVal = sessionStorage.getItem('pyfp_pt_block') || "1";
+        blockSelect.innerHTML = "";
+        blockNamesPT.forEach((name, index) => {
+            const opt = document.createElement('option');
+            opt.value = (index + 1).toString();
+            opt.textContent = name;
+            if ((index + 1).toString() === currentVal) {
+                opt.selected = true;
+            }
+            blockSelect.appendChild(opt);
+        });
+    }
+
+    async function loadData() {
+        if (loadingElem) {
+            loadingElem.style.display = 'block';
+            loadingElem.textContent = "A carregar...";
+        }
+        try {
+            const response = await fetch('frases.json?t=' + Date.now());
+            if (!response.ok) throw new Error("Erro HTTP " + response.status);
+            allFrases = await response.json();
+            if (loadingElem) loadingElem.style.display = 'none';
+
+            let activeBlock = sessionStorage.getItem('pyfp_pt_block') || "1";
+            if (blockSelect) blockSelect.value = activeBlock;
+
+            filterByBlock(parseInt(activeBlock, 10), true);
+        } catch (error) {
+            console.error("Erro ao carregar dados:", error);
+            if (loadingElem) {
+                loadingElem.style.display = 'block';
+                loadingElem.textContent = "Erro ao carregar frases.json";
+            }
+        }
+    }
+
+    function filterByBlock(blockNum, keepIndex = false) {
+        sessionStorage.setItem('pyfp_pt_block', blockNum.toString());
+        currentFilteredFrases = allFrases.filter(f => Number(f.bloque || f.block) === Number(blockNum));
+        
+        if (!keepIndex) {
+            currentIndex = 0;
+        } else {
+            const savedIndex = parseInt(sessionStorage.getItem('pyfp_pt_index') || '0', 10);
+            currentIndex = (savedIndex < currentFilteredFrases.length) ? savedIndex : 0;
+        }
+
+        if (currentFilteredFrases.length === 0) {
+            stopAnimation();
+            if (huellaCounter) huellaCounter.textContent = "Sem pegadas neste bloco";
+            if (botonesAccionContainer) botonesAccionContainer.innerHTML = "";
+            if (ctx && canvas) ctx.clearRect(0, 0, canvas.width, canvas.height);
+            return;
+        }
+
+        renderCurrentHuella();
+    }
+
+    function stopAnimation() {
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+            animationFrameId = null;
+        }
+        if (currentVideoElem) {
+            currentVideoElem.pause();
+            currentVideoElem.removeAttribute('src');
+            currentVideoElem.load();
+            currentVideoElem = null;
+        }
+    }
+
+    function renderCurrentHuella() {
+        if (currentFilteredFrases.length === 0) return;
+
+        stopAnimation();
+        sessionStorage.setItem('pyfp_pt_index', currentIndex.toString());
+
+        const item = currentFilteredFrases[currentIndex];
+        const currentBlockNum = Number(item.bloque || item.block);
+        const idUnico = `pt_${item.id || (currentBlockNum + '_' + currentIndex)}`;
+
+        if (huellaCounter) {
+            huellaCounter.textContent = `Pegada ${item.id} (${currentIndex + 1} / ${currentFilteredFrases.length})`;
+        }
+        if (prevBtn) prevBtn.disabled = currentIndex === 0;
+        if (nextBtn) nextBtn.disabled = currentIndex === currentFilteredFrases.length - 1;
+
+        if (botonesAccionContainer) {
+            botonesAccionContainer.innerHTML = `
+                <div class="interaccion-container">
+                    <button class="btn-accion" id="btn-huella-${idUnico}" onclick="darHuella('${idUnico}')">
+                        ⭐ Deixar uma pegada (<span id="count-huella-${idUnico}">0</span>)
+                    </button>
+                    <button class="btn-accion" id="btn-rumbo-${idUnico}" onclick="alternarRumbo('${idUnico}')">
+                        <svg viewBox="0 0 24 24"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+                        Guardar rumo
+                    </button>
+                </div>
+            `;
+            actualizarEstadoUIInteraccion(idUnico);
+        }
+
+        const imgPath = `plantilla${currentBlockNum}_pt.png`;
+        const videoPath = `plantilla${currentBlockNum}_pt_video.mp4`;
+
+        const bgImg = new Image();
+        bgImg.src = imgPath;
+
+        bgImg.onload = () => {
+            adjustCanvasSize(bgImg.naturalWidth, bgImg.naturalHeight);
+            drawCanvasFrame(bgImg, item.texto);
+            tryLoadVideo(videoPath, item.texto, bgImg);
+        };
+
+        bgImg.onerror = () => {
+            const bgImgJpg = new Image();
+            bgImgJpg.src = `plantilla${currentBlockNum}_pt.jpg`;
+            bgImgJpg.onload = () => {
+                adjustCanvasSize(bgImgJpg.naturalWidth, bgImgJpg.naturalHeight);
+                drawCanvasFrame(bgImgJpg, item.texto);
+                tryLoadVideo(videoPath, item.texto, bgImgJpg);
+            };
+            bgImgJpg.onerror = () => {
+                drawTextOnly(item.texto);
+            };
+        };
+    }
+
+    async function actualizarEstadoUIInteraccion(idUnico) {
+        if (localStorage.getItem(`huella_${idUnico}`)) {
+            const btn = document.getElementById(`btn-huella-${idUnico}`);
+            if (btn) btn.classList.add('activo-huella');
+        }
+        if (localStorage.getItem(`rumbo_${idUnico}`)) {
+            const btnRumbo = document.getElementById(`btn-rumbo-${idUnico}`);
+            if (btnRumbo) btnRumbo.classList.add('activo-rumbo');
+        }
+
+        try {
+            let response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
+                headers: { 'X-Master-Key': API_KEY }
+            });
+            let data = await response.json();
+            let contadores = data.record || {};
+            
+            const contadorSpan = document.getElementById(`count-huella-${idUnico}`);
+            if (contadorSpan) {
+                contadorSpan.textContent = contadores[idUnico] || 0;
+            }
+        } catch (e) {
+            console.error("Could not load footprints count", e);
+        }
+    }
+
+    async function darHuella(idUnico) {
+        if (localStorage.getItem(`huella_${idUnico}`)) return;
+
+        try {
+            let response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
+                headers: { 'X-Master-Key': API_KEY }
+            });
+            let data = await response.json();
+            let contadores = data.record || {};
+
+            contadores[idUnico] = (contadores[idUnico] || 0) + 1;
+
+            await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Master-Key': API_KEY
+                },
+                body: JSON.stringify(contadores)
+            });
+
+            localStorage.setItem(`huella_${idUnico}`, 'true');
+            const btn = document.getElementById(`btn-huella-${idUnico}`);
+            const countSpan = document.getElementById(`count-huella-${idUnico}`);
+            if (btn) btn.classList.add('activo-huella');
+            if (countSpan) countSpan.textContent = contadores[idUnico];
+
+        } catch (e) {
+            console.error("Error registering footprint", e);
+        }
+    }
+
+    function alternarRumbo(idUnico) {
+        const btnRumbo = document.getElementById(`btn-rumbo-${idUnico}`);
+        
+        if (localStorage.getItem(`rumbo_${idUnico}`)) {
+            localStorage.removeItem(`rumbo_${idUnico}`);
+            if (btnRumbo) btnRumbo.classList.remove('activo-rumbo');
+        } else {
+            localStorage.setItem(`rumbo_${idUnico}`, 'true');
+            if (btnRumbo) btnRumbo.classList.add('activo-rumbo');
+        }
+    }
+
+    function adjustCanvasSize(width, height) {
+        if (!canvas) return;
+        canvas.width = width || 1080;
+        canvas.height = height || 1350;
+    }
+
+    function tryLoadVideo(videoSrc, text, fallbackImg) {
+        const video = document.createElement('video');
+        video.src = videoSrc;
+        video.muted = true;
+        video.loop = true;
+        video.playsInline = true;
+
+        video.onloadeddata = () => {
+            currentVideoElem = video;
+            if (video.videoWidth && video.videoHeight) {
+                adjustCanvasSize(video.videoWidth, video.videoHeight);
+            }
+            video.play().then(() => {
+                function loop() {
+                    if (currentVideoElem === video && ctx && canvas) {
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        drawTextOverlay(text);
+                        animationFrameId = requestAnimationFrame(loop);
+                    }
+                }
+                loop();
+            }).catch(() => {
+                drawCanvasFrame(fallbackImg, text);
+            });
+        };
+
+        video.onerror = () => {
+            drawCanvasFrame(fallbackImg, text);
+        };
+    }
+
+    function drawCanvasFrame(bgImg, text) {
+        if (!ctx || !canvas) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+        drawTextOverlay(text);
+    }
+
+    function drawTextOnly(text) {
+        if (!ctx || !canvas) return;
+        adjustCanvasSize(1080, 1350);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawTextOverlay(text);
+    }
+
+    function drawTextOverlay(text) {
+        if (!ctx || !canvas || !text) return;
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        const maxWidth = canvas.width * 0.8;
+        const lineHeight = canvas.height * 0.052;
+        const x = canvas.width / 2;
+        const y = canvas.height * 0.46;
+
+        let fontSize = Math.round(canvas.width * 0.038);
+        if (text.length > 150) fontSize = Math.round(canvas.width * 0.032);
+        if (text.length > 250) fontSize = Math.round(canvas.width * 0.027);
+
+        ctx.font = `400 ${fontSize}px 'Montserrat', sans-serif`;
+
+        const words = text.split(' ');
+        let lines = [];
+        let currentLine = words[0];
+
+        for (let i = 1; i < words.length; i++) {
+            let word = words[i];
+            let width = ctx.measureText(currentLine + " " + word).width;
+            if (width < maxWidth) {
+                currentLine += " " + word;
+            } else {
+                lines.push(currentLine);
+                currentLine = word;
+            }
+        }
+        lines.push(currentLine);
+
+        const totalHeight = lines.length * lineHeight;
+        let startY = y - (totalHeight / 2) + (lineHeight / 2);
+
+        lines.forEach((line, index) => {
+            ctx.fillText(line, x, startY + (index * lineHeight));
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        canvas = document.getElementById('cardCanvas');
+        ctx = canvas ? canvas.getContext('2d') : null;
+        blockSelect = document.getElementById('blockSelect');
+        prevBtn = document.getElementById('prevBtn');
+        nextBtn = document.getElementById('nextBtn');
+        randomBtn = document.getElementById('randomBtn');
+        homeBtn = document.getElementById('homeBtn');
+        huellaCounter = document.getElementById('huellaCounter');
+        loadingElem = document.getElementById('loading');
+        botonesAccionContainer = document.getElementById('botonesAccionContainer');
+
+        populateSelect();
+
+        if (homeBtn) {
+            homeBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                window.location.href = "https://palabrasyfrasesperdidas-dotcom.github.io/palabrasyfrasesperdidas/";
+            });
+        }
+
+        if (blockSelect) {
+            blockSelect.addEventListener('change', (e) => {
+                filterByBlock(parseInt(e.target.value, 10), false);
+            });
+        }
+
+        if (prevBtn) {
+            prevBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (currentIndex > 0) {
+                    currentIndex--;
+                    renderCurrentHuella();
+                }
+            });
+        }
+
+        if (nextBtn) {
+            nextBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (currentIndex < currentFilteredFrases.length - 1) {
+                    currentIndex++;
+                    renderCurrentHuella();
+                }
+            });
+        }
+
+        if (randomBtn) {
+            randomBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (allFrases.length === 0) return;
+                const randomIndex = Math.floor(Math.random() * allFrases.length);
+                const randomItem = allFrases[randomIndex];
+                const blockValue = Number(randomItem.bloque || randomItem.block);
+                
+                blockSelect.value = blockValue.toString();
+                currentFilteredFrases = allFrases.filter(f => Number(f.bloque || f.block) === blockValue);
+                currentIndex = currentFilteredFrases.findIndex(f => f.id === randomItem.id);
+                if (currentIndex === -1) currentIndex = 0;
+                renderCurrentHuella();
+            });
+        }
+
+        loadData();
+    });
+</script>
+</body>
+</html>
